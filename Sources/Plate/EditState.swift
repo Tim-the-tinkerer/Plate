@@ -76,6 +76,11 @@ enum OrientOp: CaseIterable {
     case flipV
 }
 
+enum Workspace: Equatable {
+    case edit
+    case caption
+}
+
 enum EditorTool: String, CaseIterable, Equatable {
     case adjust
     case crop

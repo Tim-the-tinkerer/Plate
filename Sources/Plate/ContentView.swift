@@ -3,31 +3,53 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @ObservedObject var model: AppModel
+    @ObservedObject var captions: CaptionModel
+    var showCaption: () -> Void = {}
+    var useEditedPhoto: () -> Void = {}
+    var openProject: (URL) -> Void = { _ in }
     @State private var dropTargeted = false
 
     var body: some View {
         HStack(spacing: 0) {
             toolRail
-            VStack(spacing: 0) {
-                header
-                ZStack {
-                    CanvasView(model: model)
-                    if dropTargeted {
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Theme.amber, lineWidth: 2)
-                            .padding(8)
-                            .allowsHitTesting(false)
-                    }
-                }
-                bottomBar
+            if model.workspace == .caption {
+                CaptionContentView(
+                    model: captions,
+                    canUseEditedPhoto: model.hasImage,
+                    useEditedPhoto: useEditedPhoto
+                )
+            } else {
+                editColumn
+                Divider().overlay(Theme.line)
+                InspectorView(model: model)
+                    .frame(width: 292)
             }
-            Divider().overlay(Theme.line)
-            InspectorView(model: model)
-                .frame(width: 292)
         }
         .background(Theme.bg)
+        .background(WindowTitle(title: windowTitle, representedURL: model.workspace == .caption ? nil : model.sourceURL))
+    }
+
+    private var windowTitle: String {
+        guard model.workspace == .caption else { return model.windowTitle }
+        if captions.imageName.isEmpty { return "Plate — Caption" }
+        return "Plate — Caption — \(captions.imageName)"
+    }
+
+    private var editColumn: some View {
+        VStack(spacing: 0) {
+            header
+            ZStack {
+                CanvasView(model: model)
+                if dropTargeted {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Theme.amber, lineWidth: 2)
+                        .padding(8)
+                        .allowsHitTesting(false)
+                }
+            }
+            bottomBar
+        }
         .onDrop(of: [.fileURL], isTargeted: $dropTargeted, perform: handleDrop)
-        .background(WindowTitle(title: model.windowTitle, representedURL: model.sourceURL))
     }
 
     private var toolRail: some View {
@@ -46,8 +68,24 @@ struct ContentView: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: 52)
                 }
-                .buttonStyle(PlateButtonStyle(kind: .tool, selected: model.tool == tool))
+                .buttonStyle(PlateButtonStyle(kind: .tool, selected: model.workspace == .edit && model.tool == tool))
             }
+            Divider().overlay(Theme.line).padding(.vertical, 4)
+            Button {
+                showCaption()
+            } label: {
+                VStack(spacing: 4) {
+                    Image(systemName: "textformat")
+                        .font(.system(size: 16, weight: .medium))
+                    Text("Caption")
+                        .font(.system(size: 10, weight: .medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                .frame(maxWidth: .infinity, minHeight: 52)
+            }
+            .buttonStyle(PlateButtonStyle(kind: .tool, selected: model.workspace == .caption))
+            .help("Top line, bottom line, and a margin")
             Spacer()
         }
         .padding(10)
@@ -155,7 +193,11 @@ struct ContentView: View {
             }
             guard let url else { return }
             DispatchQueue.main.async {
-                model.load(url: url)
+                if CaptionPaths.isProject(url) {
+                    openProject(url)
+                } else {
+                    model.load(url: url)
+                }
             }
         }
         return true

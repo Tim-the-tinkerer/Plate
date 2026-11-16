@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0
+
+- Caption is a workspace in Plate. The rail's Caption button puts a top line, a bottom line, extra lines, and a margin on a picture.
+- Opening Caption brings the edited photo across when the caption canvas is still blank. Use photo does it again after more edits. The words stay.
+- Save Project writes a `.caption` file. Open it from Plate and the words come back.
+- The command line takes the caption flags. Grade flags and caption flags together edit the photo first, then draw the words.
+
 ## 1.3.0
 
 - Straighten turns the photo by a few degrees. The frame stays inside the picture, and the crop is that frame.

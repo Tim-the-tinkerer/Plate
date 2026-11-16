@@ -1,8 +1,8 @@
 # Plate
 
-A native macOS image editor. Open a photo, set exposure and color, crop it, mark it up, and save a new file.
+A native macOS image editor. Open a photo, set exposure and color, crop it, mark it up, and save a new file. Caption, on the tool rail, puts a top line, a bottom line, and a margin on a picture.
 
-**Version:** 1.3.0 (build 5)
+**Version:** 1.4.0 (build 6)
 
 The original is never overwritten. If the photo has unsaved edits, Plate asks before you open another one, paste, load the sample, close the window, or quit. Live preview downscales the long edge to 1600 px. Save and Copy render the full image, capped at 8192 px on the long edge.
 
@@ -25,7 +25,15 @@ The original is never overwritten. If the photo has unsaved edits, Plate asks be
 
 Hold **Original** to see the file you opened. Marks hide while you hold it, and they are painted into the picture when you Save or Copy. Undo keeps the last 50 edits.
 
-The command line uses the same sliders, look, crop, turns, and straighten. It does not draw marks, it does not apply a saved grade, and it does not ask about unsaved edits.
+## Caption
+
+Caption is the last button on the tool rail. It keeps its own words, margin, and undo. A blank caption canvas takes the photo you have open, including the grade, the crop, and the marks. **Use photo** does that again after you edit some more. The words stay put.
+
+The classic look is Impact, white letters, and a black outline. Drag a pinned line to place it. Margin grows the canvas on any side. A bottom margin holds the bottom line. Fit caption wraps the selected line into the roomiest strip. Save Project writes a `.caption` file you can open later and change the words.
+
+Square is 1080×1080, Wide is 1920×1080, and Story is 1080×1920. In Caption, Save PNG is ⌘S, Save JPEG is ⇧⌘S, and Save Project is ⌥⌘S. The original file is still never overwritten.
+
+The command line uses the same sliders, look, crop, turns, and straighten. It does not draw Plate's marks, it does not apply a saved grade, and it does not ask about unsaved edits. Caption flags draw the words. When both are present, the grade happens first and the words go on that result.
 
 ## Saved files
 
@@ -38,16 +46,20 @@ Editing updates a preview whose long edge is at most 1600 pixels, so the control
 | | |
 |---|---|
 | ⌘O | Open |
-| ⌘S | Save As |
+| ⌘S | Save As. In Caption, Save PNG |
+| ⇧⌘S | Save JPEG, in Caption |
 | ⌘Z / ⇧⌘Z | Undo / redo |
-| ⌘C | Copy the edited picture |
-| ⌘V | Paste an image |
-| ⌘K | Reset edits |
+| ⌘C | Copy the picture. In Caption, copies the text while you are typing |
+| ⌘V | Paste an image, or paste text while you are typing |
+| ⌘K | Reset edits. In Caption, clear the words |
 | ⌘L | Load the sample |
 | ⌘] / ⌘[ | Rotate clockwise / counterclockwise |
-| ⌘1 / ⌘2 / ⌘3 / ⌘4 | Adjust / Crop / Looks / Annotate |
+| ⌘1 / ⌘2 / ⌘3 / ⌘4 / ⌘5 | Adjust / Crop / Looks / Annotate / Caption |
+| ⌘N | New square canvas, in Caption |
+| ⌘T | Add a caption |
+| ⌥⌘S | Save a Caption project |
 | ⌘⌫ | Delete the selected mark |
-| ⌘D | Duplicate the selected mark |
+| ⌘D | Duplicate the selected mark, or the selected caption |
 | Arrow keys | Nudge the selected mark. Shift moves it farther |
 | ⌘= / ⌘− | Zoom in / out |
 | ⌘0 / ⌘9 | Fit / actual size |
@@ -59,10 +71,12 @@ Scroll zooms while the photo fits the window, and pans after you zoom in. Hold �
 ```bash
 Plate photo.jpg --exposure 0.3 --look warm -o print.jpg --jpeg
 Plate photo.png --rotate 90 --crop 0.1,0.1,0.8,0.8
+Plate photo.png --top "ONE DOES NOT SIMPLY" --bottom "WALK INTO MORDOR"
+Plate photo.jpg --exposure 0.4 --bottom "and that's the joke" --margin-bottom 0.4 --fill black
 Plate --self-test
 ```
 
-`--crop` is normalized and applied after `--rotate` and `--straighten`. `--straighten` is degrees clockwise, from −45 to 45, and the frame stays inside the photo. JPEG quality defaults to 0.92.
+`--crop` is normalized and applied after `--rotate` and `--straighten`. `--straighten` is degrees clockwise, from −45 to 45, and the frame stays inside the photo. JPEG quality defaults to 0.92. A caption command with no `-o` writes `INPUT-caption.png`. `--at` is measured from the top left of the whole canvas, margin included. `--size` is a fraction of the photo width.
 
 ## Build
 

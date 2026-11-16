@@ -31,6 +31,7 @@ final class AppModel: ObservableObject {
     @Published var fitScale: Double = 1
     @Published var hasImage = false
     @Published var canvasWindowRect: NSRect = .zero
+    @Published var workspace: Workspace = .edit
 
     private var source: PixelBuffer?
     private var previewSource: PixelBuffer?
@@ -55,6 +56,9 @@ final class AppModel: ObservableObject {
     var isNudging: Bool { nudgeOriginal != nil }
 
     var windowTitle: String {
+        if workspace == .caption {
+            return "Plate — Caption"
+        }
         if let fileName { return "Plate — \(fileName)" }
         return "Plate"
     }
@@ -106,9 +110,31 @@ final class AppModel: ObservableObject {
     }
 
     func select(tool: EditorTool) {
+        workspace = .edit
         guard self.tool != tool else { return }
         self.tool = tool
         scheduleRender()
+    }
+
+    func showCaption() {
+        workspace = .caption
+    }
+
+    /// Full-size render, the same pixels Save and Copy write, for the caption workspace.
+    func renderForCaption(_ completion: @escaping (CGImage?, String) -> Void) {
+        guard let source else {
+            completion(nil, "")
+            return
+        }
+        let state = state
+        let name = fileName ?? "Plate.png"
+        DispatchQueue.global(qos: .userInitiated).async {
+            let rendered = Self.renderedForExport(source, state: state)
+            let image = ImageCodec.cgImage(rendered)
+            DispatchQueue.main.async {
+                completion(image, name)
+            }
+        }
     }
 
     func beginEdit() {

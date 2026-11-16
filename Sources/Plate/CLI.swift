@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 struct CLIError: Error, Equatable {
@@ -227,5 +228,101 @@ enum CLI {
             return nil
         }
         return rect
+    }
+
+    /// A grade, crop, turn, or look is in the arguments. A bare filename is not.
+    static func hasEdits(_ args: [String]) -> Bool {
+        let flags: Set<String> = [
+            "--exposure", "--brightness", "--contrast", "--highlights", "--shadows",
+            "--saturation", "--temperature", "--tint", "--sharpness", "--vignette",
+            "--rotate", "--straighten", "--crop", "--look", "--quality",
+            "--flip-h", "--flip-v",
+        ]
+        return args.contains { flags.contains($0) }
+    }
+
+    /// Plate's parser does not know caption flags. Drop them, and the words that follow.
+    static func withoutCaptionFlags(_ args: [String]) -> [String] {
+        let dropValue: Set<String> = [
+            "--top", "--bottom", "--font", "--size", "--width",
+            "--fill", "--stroke", "--stroke-width", "--align",
+            "--margin-top", "--margin-bottom", "--margin-left", "--margin-right", "--mat",
+        ]
+        var kept: [String] = []
+        var index = 0
+        while index < args.count {
+            let flag = args[index]
+            if flag == "--at" {
+                index += 3
+                continue
+            }
+            if flag == "--no-caps" {
+                index += 1
+                continue
+            }
+            if dropValue.contains(flag) {
+                index += 2
+                continue
+            }
+            kept.append(flag)
+            index += 1
+        }
+        return kept
+    }
+
+    /// Grade the photo, then draw the captions on that result.
+    static func runGradedCaption(_ args: [String]) {
+        let request: Request
+        switch parse(withoutCaptionFlags(args)) {
+        case .failure(let error):
+            fputs("error: \(error.message)\n", stderr)
+            exit(1)
+        case .success(let parsed):
+            request = parsed
+        }
+
+        let inputURL = URL(fileURLWithPath: request.input)
+        let buffer: PixelBuffer
+        do {
+            buffer = try ImageCodec.load(url: inputURL)
+        } catch {
+            fputs("error: \(error.localizedDescription)\n", stderr)
+            exit(1)
+        }
+        let rendered = Engine.render(buffer, state: request.state, applyCrop: true, bakeAnnotations: true)
+        guard let graded = ImageCodec.cgImage(rendered) else {
+            fputs("error: Could not prepare the edited photo.\n", stderr)
+            exit(1)
+        }
+
+        let job: CaptionJob
+        let output: URL
+        do {
+            job = try CaptionCLI.parse(CaptionCLI.withoutPlateFlags(args))
+            output = try job.resolveOutput(input: inputURL)
+        } catch {
+            fputs("error: \(error.localizedDescription)\n", stderr)
+            exit(1)
+        }
+        let ext = output.pathExtension.lowercased()
+        let jpeg = ext == "jpg" || ext == "jpeg" || (ext.isEmpty && (request.jpeg || job.jpeg))
+        let product = CaptionRenderer.render(
+            source: graded,
+            marks: job.marks(),
+            margins: job.margins,
+            flatten: jpeg
+        )
+        do {
+            if jpeg {
+                let data = try ImageFile.jpegData(product.image, quality: request.quality)
+                try data.write(to: output, options: .atomic)
+            } else {
+                try ImageFile.write(product.image, to: output, jpeg: false)
+            }
+        } catch {
+            fputs("error: \(error.localizedDescription)\n", stderr)
+            exit(1)
+        }
+        print("edited and captioned \(buffer.width)×\(buffer.height) → \(product.image.width)×\(product.image.height)  \(output.path)")
     }
 }

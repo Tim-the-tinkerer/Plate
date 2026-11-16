@@ -39,12 +39,60 @@ enum SelfTest {
             ("straighten", straighten),
             ("grade", grade),
             ("nudge and duplicate", nudgeAndDuplicate),
+            ("caption flags", captionFlags),
+            ("caption on a grade", captionOnAGrade),
         ]
         for (name, check) in checks {
             if let failure = check() {
                 return "\(name): \(failure)"
             }
         }
+        if let failure = CaptionSelfTest.run() {
+            return "caption: \(failure)"
+        }
+        return nil
+    }
+
+    private static func captionFlags() -> String? {
+        let args = ["Plate", "photo.jpg", "--exposure", "0.3", "--top", "HI", "--at", "0.2,0.4", "there", "--jpeg"]
+        let plate = CLI.withoutCaptionFlags(args)
+        if plate.contains("--top") || plate.contains("--at") || plate.contains("HI") || plate.contains("there") {
+            return "caption words leaked into the grade arguments"
+        }
+        if !plate.contains("--exposure") || !plate.contains("photo.jpg") {
+            return "grade arguments were dropped"
+        }
+        let caption = CaptionCLI.withoutPlateFlags(args)
+        if caption.contains("--exposure") || caption.contains("0.3") {
+            return "grade leaked into the caption arguments"
+        }
+        if !caption.contains("--top") || !caption.contains("HI") || !caption.contains("--at") {
+            return "caption arguments were dropped"
+        }
+        let fromIn = CaptionCLI.withoutPlateFlags(["Plate", "--in", "shot.png", "--exposure", "1", "--bottom", "ok"])
+        if !fromIn.contains("shot.png") || fromIn.contains("--exposure") || fromIn.contains("--in") {
+            return "--in did not become the caption input"
+        }
+        return nil
+    }
+
+    private static func captionOnAGrade() -> String? {
+        let source = PixelBuffer.filled(width: 80, height: 40, pixel: .rgb(20, 40, 80))
+        var state = EditState()
+        state.exposure = 1
+        let graded = Engine.render(source, state: state, applyCrop: true, bakeAnnotations: true)
+        guard let image = ImageCodec.cgImage(graded) else { return "edited photo had no image" }
+        var mark = CaptionMark.top()
+        mark.text = "HI"
+        let painted = CaptionRenderer.render(source: image, marks: [mark], margins: CanvasMargins(), flatten: false)
+        let blank = CaptionMark.top()
+        let plain = CaptionRenderer.render(source: image, marks: [blank], margins: CanvasMargins(), flatten: false)
+        guard painted.image.width == 80, painted.image.height == 40 else { return "caption changed the frame" }
+        guard let paintedBytes = ImageFile.rgbaTopDown(painted.image),
+              let plainBytes = ImageFile.rgbaTopDown(plain.image) else {
+            return "could not read the captioned photo"
+        }
+        if paintedBytes == plainBytes { return "the top line did not paint" }
         return nil
     }
 

@@ -14,6 +14,10 @@ enum Theme {
     static let muted = Color(red: 0.64, green: 0.58, blue: 0.50)
     static let ink = Color(red: 0.14, green: 0.10, blue: 0.06)
     static let danger = Color(red: 0.86, green: 0.40, blue: 0.30)
+    /// Caption uses the same amber as the rest of Plate.
+    static let border = line
+    static let yellow = amber
+    static let yellowDim = amberDeep
 
     static let windowNS = NSColor(calibratedRed: 0.09, green: 0.08, blue: 0.07, alpha: 1)
 }
@@ -63,4 +67,58 @@ struct PlateButtonStyle: ButtonStyle {
         case .ghost: return Theme.line.opacity(0.7)
         }
     }
+}
+
+struct CaptionButtonStyle: ButtonStyle {
+    enum Kind { case primary, secondary, ghost }
+    var kind: Kind = .secondary
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 11, weight: .semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .foregroundStyle(foreground)
+            .background(background.opacity(configuration.isPressed ? 0.75 : 1))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(stroke, lineWidth: 1))
+    }
+
+    private var foreground: Color {
+        switch kind {
+        case .primary: return Theme.ink
+        case .secondary, .ghost: return Theme.text
+        }
+    }
+
+    private var background: Color {
+        switch kind {
+        case .primary: return Theme.amber
+        case .secondary: return Theme.elevated
+        case .ghost: return Color.clear
+        }
+    }
+
+    private var stroke: Color {
+        switch kind {
+        case .primary: return Theme.amber
+        case .secondary: return Theme.line
+        case .ghost: return Theme.line.opacity(0.7)
+        }
+    }
+}
+
+extension Notification.Name {
+    static let captionOpen = Notification.Name("caption.open")
+    static let captionSavePNG = Notification.Name("caption.savePNG")
+    static let captionSaveJPEG = Notification.Name("caption.saveJPEG")
+    static let captionSaveProject = Notification.Name("caption.saveProject")
+    static let captionCopy = Notification.Name("caption.copy")
+    static let captionPaste = Notification.Name("caption.paste")
+    static let captionClearText = Notification.Name("caption.clearText")
+    static let captionCloseImage = Notification.Name("caption.closeImage")
+    static let captionAdd = Notification.Name("caption.add")
+    static let captionDuplicate = Notification.Name("caption.duplicate")
+    static let captionBlank = Notification.Name("caption.blank")
+    static let captionMemeStyle = Notification.Name("caption.memeStyle")
 }
